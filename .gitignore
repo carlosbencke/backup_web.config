@@ -1,4 +1,9 @@
 backup
 origem
 backup_webconfigs_br.ps1
-backup_webconfigs_homolog.ps1
+backup_webconfigs_hml.ps1
+backup_webconfigs_uy.ps1
+backup_webconfigs_py.ps1
+*.7z
+migrate-ad-e247df27092d.json
+teste_bucket.md

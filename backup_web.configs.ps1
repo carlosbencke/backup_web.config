@@ -1,13 +1,21 @@
 
-# Variáveis
-$pasta_origem="C:\Users\user\Projetos\backup_web.config\origem" 
-$pasta_backup="C:\Users\user\Projetos\backup_web.config\backup" 
-$pasta_raiz= "C:\Users\user\Projetos\backup_web.config\" # Onde serão gravados os arquivos compactados.
-$data=Get-Date -Format "yyyyMMdd_HHmmss"
-$arquivo_zip = $pasta_raiz + $data + "-TST-webconfig.7z" # Nome do arquivo compactado.
+# Variáveis Configuráveis
+$pasta_origem="C:\Users\cb23320\Projetos\backup_web.config\origem" 
+$pasta_backup="C:\Users\cb23320\Projetos\backup_web.config\backup" 
+$pasta_raiz= "C:\Users\cb23320\Projetos\backup_web.config\" # Onde serão gravados os arquivos compactados.
+$bucket = 'gs://mgt-backups-infra'
+$quantidade_versões = 5 # Quantidades de versões compactadas que ficarão armazenadas localmente.
+$service_account = 'mgt-backups-infra@migrate-ad.iam.gserviceaccount.com' # service-account
+$service_account_key = "C:\Users\cb23320\Projetos\backup_web.config\migrate-ad-e247df27092d.json" # Chave da service account
 $7zip = "C:\Program Files\7-Zip\7z.exe" # Executável do 7zip.
+$nome_zip = "-TST-webconfig.7z"
+
+
+# Variáveis fixas
+$data=Get-Date -Format "yy-MM-dd"
+$arquivo_zip = $pasta_raiz + $data + $nome_zip # Nome do arquivo compactado.
 $argumentos = "a -t7z -mx9  $arquivo_zip $pasta_backup" 
-$quantidade_versões = 5 # Quantidades de versões compactadas que ficarão armazenadas.
+
 
 
 function Backup {
@@ -29,6 +37,10 @@ function Backup {
         Copy-Item -Path $_.FullName -Destination $caminho_destino -Force
         Write-Host "Copiado $($_.FullName) para $caminho_destino"
     }
+     Compact
+     Send
+     Rotate
+     Write-Host "`nBackup Concluído!`n" -ForegroundColor Green
 }
 
 
@@ -105,6 +117,25 @@ function Compact {
     Start-Process -FilePath $7zip -ArgumentList $argumentos -Wait
 }
 
+function Send {
+    gcloud auth activate-service-account $service_account --key-file $service_account_key
+
+    gsutil ls $bucket/$data$nome_zip
+
+    $status = $LastExitCode
+    
+    if ($status -eq 1) {
+        Write-Host "Ainda não há backup do dia no bucket. Copiando backup para o bucket..." -ForegroundColor Yellow
+        gsutil cp $arquivo_zip $bucket
+    }
+    
+    Write-Host "Já existe um backup do dia no bucket. Não será copiado o backup para o bucket..." -ForegroundColor Red
+
+    gcloud auth revoke mgt-backups-infra@migrate-ad.iam.gserviceaccount.com
+
+
+}
+
 
 function Rotate {
 
@@ -138,11 +169,9 @@ function Menu {
 
 # Execução
 
-# Se tiver um argumento 'auto' fará o backup sem exibir o menu.
+# Se tiver um argumento 'auto' fará o backup sem exibir o menu e terminará o script.
 if ($args -eq'auto'){
     Backup
-    Compact
-    Rotate
     exit
 }
 
@@ -155,7 +184,7 @@ while ($loop) {
     $choice = Read-Host "Digite o numero da opcao desejada (ou 'Q' para sair)"
 
     switch ($choice) {
-        '1' { Backup; Compact; Rotate; $loop = $false; break }
+        '1' { Backup; $loop = $false; break }
         '2' { Check; $loop = $false; break }
         '3' { Restore; $loop = $false; break }
 

@@ -47,3 +47,6 @@ executar com os privilégios mais altos
 programa: powershell.exe
 
 argumentos: C:\Backup\backup_webconfigs_br.ps1 auto
+
+## Login gcloud
+gcloud auth activate-service-account mgt-backups-infra@migrate-ad.iam.gserviceaccount.com --key-file "migrate-ad-e247df27092d.json"
